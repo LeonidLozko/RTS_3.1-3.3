@@ -1,0 +1,3 @@
+title=<Lab 3>
+author=<Leonid Lozko>
+orientation=<portrait>
