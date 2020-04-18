@@ -8,6 +8,7 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.widget import Widget
 from kivy.uix.popup import Popup
+from threading import Thread
 
 
 def factorize(n):
@@ -46,54 +47,50 @@ def perceptron(learn_speed, deadline, num_iter):
     return w0, w1, time
 
 
-def genetic(a, b, c, d, y):
+def genetic(a, b, c, d, y, chan=0.1):
     num_pop = 4
+    chance = chan
     population = [[randint(0, int(y / 4)) for i in range(4)] for j in range(num_pop)]
-
-    def root(nums):
-        return nums[0] * a + nums[1] * b + nums[2] * c + nums[3] * d
-
-    def random_parents():
-        p = uniform(0, 1)
-        if p < chances[0]:
-            par1 = population[0]
-        elif p < chances[0] + chances[1]:
-            par1 = population[1]
-        elif p < chances[0] + chances[1] + chances[2]:
-            par1 = population[2]
-        else:
-            par1 = population[3]
-        par2 = par1
-        while par2 == par1:
-            p = uniform(0, 1)
-            if p < chances[0]:
-                par2 = population[0]
-            elif p < chances[0] + chances[1]:
-                par2 = population[1]
-            elif p < chances[0] + chances[1] + chances[2]:
-                par2 = population[2]
-            else:
-                par2 = population[3]
-        return par1, par2
-    roots = [root(i) for i in population]
-    while roots[0] != y and roots[1] != y and roots[2] != y and roots[3] != y:
+    roots = [i[0] * a + i[1] * b + i[2] * c + i[3] * d for i in population]
+    counter = 0
+    while y not in roots:
         deltas = [1 / abs(i - y) for i in roots]
         chances = [i / sum(deltas) for i in deltas]
         for i in range(num_pop >> 1):
-            parents = random_parents()
+            p = uniform(0, 1)
+            if p < chances[0]:
+                par1 = population[0]
+            elif p < chances[0] + chances[1]:
+                par1 = population[1]
+            elif p < chances[0] + chances[1] + chances[2]:
+                par1 = population[2]
+            else:
+                par1 = population[3]
+            par2 = par1
+            while par2 == par1:
+                p = uniform(0, 1)
+                if p < chances[0]:
+                    par2 = population[0]
+                elif p < chances[0] + chances[1]:
+                    par2 = population[1]
+                elif p < chances[0] + chances[1] + chances[2]:
+                    par2 = population[2]
+                else:
+                    par2 = population[3]
             gene = randint(0, 3)
-            parents[0][gene], parents[1][gene] = parents[1][gene], parents[0][gene]
-            population[2 * i], population[2 * i + 1] = parents[0], parents[1]
-        population[randint(0, 3)][randint(0, 3)] += choice([-1, 1])
-        roots = [root(i) for i in population]
-    if roots[0] == y:
-        return population[0]
-    elif roots[1] == y:
-        return population[1]
-    elif roots[2] == y:
-        return population[2]
-    else:
-        return population[3]
+            par1[gene], par2[gene] = par2[gene], par1[gene]
+            for j in range(4):
+                ran = uniform(0, 1)
+                if ran < chance:
+                    par1[j] += choice([-1, 1])
+                ran = uniform(0, 1)
+                if ran < chance:
+                    par2[j] += choice([-1, 1])
+            population[2 * i] = par1
+            population[2 * i + 1] = par2
+        roots = [j[0] * a + j[1] * b + j[2] * c + j[3] * d for j in population]
+        counter += 1
+    return population[roots.index(y)], counter
 
 
 class TestApp(App):
@@ -145,9 +142,12 @@ class TestApp(App):
         gl2.add_widget(but_calc_2)
         gl2.add_widget(num_iter)
 
-        def calc_3(instance):
+        def calc_3():
             result_3.text = "Result: ({}, {}, {}, {})".\
                 format(*genetic(int(ins_a.text), int(ins_b.text), int(ins_c.text), int(ins_d.text), int(ins_y.text)))
+
+        def press(instance):
+            Thread(target=calc_3).start()
 
         gl3 = GridLayout(cols=2, size_hint=(1, .46))
         lab_3 = Label(text="Lab 3.3")
@@ -158,7 +158,7 @@ class TestApp(App):
         ins_b = TextInput(text="Insert b here", multiline=False)
         # ins_b = TextInput(text="4", multiline=False)
         ins_b.bind(focus=clear_text)
-        but_calc_3 = Button(text="Calculate", on_press=calc_3)
+        but_calc_3 = Button(text="Calculate", on_press=press)
         ins_c = TextInput(text="Insert c here", multiline=False)
         # ins_c = TextInput(text="5", multiline=False)
         ins_c.bind(focus=clear_text)
@@ -187,4 +187,16 @@ class TestApp(App):
 
 
 if __name__ == "__main__":
-    TestApp().run()
+    # TestApp().run()
+    iters = []
+    percents = (0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9)
+    for i in percents:
+        steps = 0
+        for j in range(100):
+            steps += genetic(3, 2, 1, 5, 39, i)[1]
+        iters.append(steps / 100)
+    it = iters.index(min(iters))
+    print("Найшвидше виконується алгоритм з шансом мутації: {}".format(percents[it]))
+    print("Кількість ітерацій за 100 спроб з шансом {}: {}".format(percents[it], iters[it]))
+    print("Список кількості ітерацій залежно від шансу мутації " + str(dict(zip(percents[:9], iters[:9]))))
+    print(str(dict(zip(percents[9:], iters[9:]))))
