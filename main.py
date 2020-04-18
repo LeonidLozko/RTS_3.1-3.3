@@ -7,6 +7,7 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.widget import Widget
+from kivy.uix.popup import Popup
 
 
 def factorize(n):
@@ -28,7 +29,8 @@ def perceptron(learn_speed, deadline, num_iter):
     ok = [False] * 4
     counter = 0
     start = default_timer()
-    while sum(ok) != 4 and counter < num_iter and default_timer() - start < deadline:
+    time = 0
+    while sum(ok) != 4 and counter < num_iter and time < deadline:
         iteration = counter % 4
         if not ok[iteration]:
             y = w0 * dots[iteration][0] + w1 * dots[iteration][1]
@@ -40,7 +42,8 @@ def perceptron(learn_speed, deadline, num_iter):
                 w1 = w1 + delta * dots[iteration][1] * learn_speed
                 ok = [False] * 4
         counter += 1
-    return w0, w1
+        time = default_timer() - start
+    return w0, w1, time
 
 
 def genetic(a, b, c, d, y):
@@ -117,8 +120,12 @@ class TestApp(App):
         gl1.add_widget(but_calc_1)
 
         def calc_2(instance):
-            result_2.text = "Result: w1={}, w2={}".\
-                format(*perceptron(float(learn_speed.text), float(deadline.text), int(num_iter.text)))
+            w0, w1, time = perceptron(float(learn_speed.text), float(deadline.text), int(num_iter.text))
+            result_2.text = "Result: w1={:.4f}, w2={:.4f}".\
+                format(w0, w1)
+            Popup(title="Time of calculating", title_align="center",
+                  content=Label(text="{:.4f} ms".format(time * 1000)),
+                  size_hint=(.5, .5)).open()
 
         gl2 = GridLayout(cols=2, size_hint=(1, .27))
         lab_2 = Label(text="Lab 3.2")
